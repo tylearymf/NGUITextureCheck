@@ -384,53 +384,6 @@ Camera:
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
   m_StereoMirrorMode: 0
---- !u!1001 &1710001867
-Prefab:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    m_TransformParent: {fileID: 2091783901}
-    m_Modifications:
-    - target: {fileID: 4877418875453944, guid: 5c4e408b556314e459cbd71bb08c0eb2, type: 2}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4877418875453944, guid: 5c4e408b556314e459cbd71bb08c0eb2, type: 2}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4877418875453944, guid: 5c4e408b556314e459cbd71bb08c0eb2, type: 2}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4877418875453944, guid: 5c4e408b556314e459cbd71bb08c0eb2, type: 2}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4877418875453944, guid: 5c4e408b556314e459cbd71bb08c0eb2, type: 2}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4877418875453944, guid: 5c4e408b556314e459cbd71bb08c0eb2, type: 2}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4877418875453944, guid: 5c4e408b556314e459cbd71bb08c0eb2, type: 2}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4877418875453944, guid: 5c4e408b556314e459cbd71bb08c0eb2, type: 2}
-      propertyPath: m_RootOrder
-      value: 1
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-  m_ParentPrefab: {fileID: 100100000, guid: 5c4e408b556314e459cbd71bb08c0eb2, type: 2}
-  m_IsPrefabParent: 0
---- !u!4 &1710001868 stripped
-Transform:
-  m_PrefabParentObject: {fileID: 4877418875453944, guid: 5c4e408b556314e459cbd71bb08c0eb2,
-    type: 2}
-  m_PrefabInternal: {fileID: 1710001867}
 --- !u!1 &2091783897
 GameObject:
   m_ObjectHideFlags: 0
@@ -541,7 +494,6 @@ Transform:
   m_LocalScale: {x: 0.003003003, y: 0.003003003, z: 0.003003003}
   m_Children:
   - {fileID: 1396263454}
-  - {fileID: 1710001868}
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

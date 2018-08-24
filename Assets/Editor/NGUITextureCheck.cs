@@ -183,11 +183,11 @@ public class NGUITextureCheck : EditorWindow
                 }
                 GUILayout.Space(2);
                 item.toggle = DrawHeader(item.toggle, item.guiName);
+                EditorGUILayout.EndHorizontal();
                 if (item.toggle)
                 {
                     item.Draw();
                 }
-                EditorGUILayout.EndHorizontal();
             }
             EditorGUILayout.EndVertical();
         }
@@ -506,7 +506,7 @@ public class NGUITextureCheck : EditorWindow
 
         void AddPathToDic(PrefabInfo pInfo, string pPath)
         {
-            if (!referenceDic.IsNullOrEmpty())
+            if (!referenceDic.ContainsKey(pInfo))
             {
                 referenceDic.Add(pInfo, new List<string>());
                 serializaReference.Add(new SerializaTextureDictionary(pInfo, new List<string>()));
