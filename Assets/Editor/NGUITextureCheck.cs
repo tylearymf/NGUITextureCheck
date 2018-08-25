@@ -38,7 +38,13 @@ public class NGUITextureCheck : EditorWindow
 
     public const string cPrefabPath = "Assets/UI/Prefabs";
     public const string cTexturePath = "Assets/UI/CommonTextures";
-
+    public static string[] sSortTypeNames = new string[]
+    {
+        "",
+        "名字",
+        "数量",
+        "尺寸"
+    };
     static Vector2 sScrollViewPos;
 
     List<TextureInfo> mTextureInfos;
@@ -111,16 +117,28 @@ public class NGUITextureCheck : EditorWindow
             return;
         }
 
-        EditorGUILayout.BeginHorizontal();
+        EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
         EditorGUILayout.LabelField("排序类型", GUILayout.Width(50));
-        mSortType = (SortType)EditorGUILayout.EnumPopup(mSortType, GUILayout.Width(50));
+        mSortType = (SortType)EditorGUILayout.Popup((int)mSortType, sSortTypeNames, GUILayout.Width(50));
         if (GUILayout.Button(mDescending ? "顺序" : "逆序", GUILayout.Width(50)))
         {
             mLastSortTyp = 0;
             mDescending = !mDescending;
         }
         GUI.changed = false;
-        mSearchText = EditorGUILayout.TextField(string.Empty, mSearchText, "SearchTextField");
+        using (var s = new EditorGUILayout.HorizontalScope())
+        {
+            mSearchText = EditorGUILayout.TextField(string.Empty, mSearchText, "SearchTextField");
+            if (GUILayout.Button(mSearchText, mSearchText.IsNullOrEmpty() ? "SearchCancelButtonEmpty" : "SearchCancelButton"))
+            {
+                if (!mSearchText.IsNullOrEmpty())
+                {
+                    mSearchText = string.Empty;
+                    GUI.FocusControl(string.Empty);
+                }
+            }
+        }
+
         if (GUI.changed) mMatchFullName = false;
         EditorGUILayout.EndHorizontal();
 
@@ -208,6 +226,11 @@ public class NGUITextureCheck : EditorWindow
                 }
                 mSearchText = string.Join("|", tTextureNames);
             }
+        }
+
+        if (GUI.Button(new Rect(Vector2.zero, position.size), string.Empty, GUIStyle.none))
+        {
+            GUI.FocusControl(string.Empty);
         }
     }
 
@@ -357,7 +380,7 @@ public class NGUITextureCheck : EditorWindow
                     var tGo = GameObject.Find(name);
                     if (tGo == null)
                     {
-                        var tRoot = GameObject.Find("UIRoot");
+                        var tRoot = GameObject.Find("UI Root");
                         if (tRoot != null)
                         {
                             tGo = PrefabUtility.InstantiatePrefab(gameObject) as GameObject;
