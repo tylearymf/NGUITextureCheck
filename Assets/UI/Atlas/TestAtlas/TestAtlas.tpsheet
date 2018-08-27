@@ -1,0 +1,19 @@
+#
+# Sprite sheet data for Unity.
+#
+# To import these sprites into your Unity project, download "TexturePackerImporter":
+# https://www.codeandweb.com/texturepacker/unity
+#
+# $TexturePacker:SmartUpdate:6dafa4883882c885c5638c5a381433f6:29fac6ea10196eba34a0218889c8996d:792a69090600aaa638d7a4472f7c2776$
+#
+:format=40300
+:texture=TestAtlas.png
+:size=1024x2048
+:pivotpoints=enabled
+:borders=disabled
+
+Backdrop1;1;249;512;256; 0.5;0.5; 0;0;0;0; 4;512;0;0;0;0;256;512;256; 2;1;2;3;0;1;3
+brick;1;1535;512;512; 0.5;0.5; 0;0;0;0; 4;512;0;0;0;0;512;512;512; 2;1;2;3;0;1;3
+brickNM;1;1021;512;512; 0.5;0.5; 0;0;0;0; 4;512;0;0;0;0;512;512;512; 2;1;2;3;0;1;3
+burlap;515;1942;105;105; 0.5;0.5; 0;0;0;0; 4;105;0;0;0;0;105;105;105; 2;1;2;3;0;1;3
+sand;1;507;512;512; 0.5;0.5; 0;0;0;0; 4;512;0;0;0;0;512;512;512; 2;1;2;3;0;1;3

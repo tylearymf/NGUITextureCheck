@@ -86,7 +86,12 @@ public class UISnapshotPointEditor : Editor
 		GameObject go = PrefabUtility.FindPrefabRoot(t == null ? point.gameObject : t.gameObject);
 		if (go == null) return null;
 
-		// Actual prefab
-		return PrefabUtility.GetCorrespondingObjectFromSource(go) as GameObject;
-	}
+        // Actual prefab
+#if UNITY_2018
+        return PrefabUtility.GetCorrespondingObjectFromSource(go) as GameObject;
+#else
+        throw new System.NotImplementedException();
+#endif
+
+    }
 }
