@@ -553,9 +553,31 @@ public class NGUITextureCheck : EditorWindow
             EditorGUILayout.EndVertical();
         }
 
+        static public bool operator !=(AtlasInfo pInfo, UISprite pSprite)
+        {
+            if (pSprite == null) return true;
+            return pInfo.atlas != pSprite.atlas || pInfo.spriteNames.IsNullOrEmpty() || !pInfo.spriteNames.Contains(pSprite.spriteName);
+        }
+
+        static public bool operator ==(AtlasInfo pInfo, UISprite pSprite)
+        {
+            if (pSprite == null) return false;
+            return pInfo.atlas == pSprite.atlas && !pInfo.spriteNames.IsNullOrEmpty() && pInfo.spriteNames.Contains(pSprite.spriteName);
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            return base.Equals(obj);
+        }
+
         static public bool CheckSpriteIsEqual(Transform pRoot, UISprite pSprite, AtlasInfo pInfo, string pPath)
         {
-            if (pSprite == null || pInfo == null || pInfo.spriteNames.IsNullOrEmpty() || !pInfo.spriteNames.Contains(pSprite.spriteName) || pInfo.atlas != pSprite.atlas)
+            if (pInfo != pSprite)
             {
                 return false;
             }
@@ -714,7 +736,8 @@ public class NGUITextureCheck : EditorWindow
                     var tGo = GameObject.Find(name);
                     if (tGo == null)
                     {
-                        var tRoot = GameObject.Find("UI Root");
+                        const string tRootName = "UI Root";
+                        var tRoot = GameObject.Find(tRootName);
                         if (tRoot != null)
                         {
                             tGo = PrefabUtility.InstantiatePrefab(gameObject) as GameObject;
@@ -725,6 +748,14 @@ public class NGUITextureCheck : EditorWindow
                                 tGo.transform.localRotation = Quaternion.identity;
                                 tGo.transform.localScale = Vector3.one;
                             }
+                            else
+                            {
+                                Debug.LogErrorFormat("实例化 {0} 错误", gameObject.name);
+                            }
+                        }
+                        else
+                        {
+                            Debug.LogErrorFormat("找不到 {0}", tRootName);
                         }
                     }
 
@@ -732,7 +763,7 @@ public class NGUITextureCheck : EditorWindow
                     {
                         tGo.name = name;
 
-                        var tFind = TextureInfo.GetTrasnformByPath(tGo, pInfo.name, tPath, selectOptionIndex);
+                        var tFind = TextureInfo.GetTrasnformByPath(tGo, pInfo, tPath, selectOptionIndex);
                         if (tFind != null) Selection.activeTransform = tFind;
                     }
                 }
@@ -767,9 +798,11 @@ public class NGUITextureCheck : EditorWindow
                     var tGo = GameObject.Find(name);
                     if (tGo == null)
                     {
+                        const string tRootName = "UI Root";
                         var tRoot = GameObject.Find("UI Root");
                         if (tRoot != null)
                         {
+                            Debug.Log(gameObject.name, gameObject);
                             tGo = PrefabUtility.InstantiatePrefab(gameObject) as GameObject;
                             if (tGo != null)
                             {
@@ -778,6 +811,14 @@ public class NGUITextureCheck : EditorWindow
                                 tGo.transform.localRotation = Quaternion.identity;
                                 tGo.transform.localScale = Vector3.one;
                             }
+                            else
+                            {
+                                Debug.LogErrorFormat("实例化 {0} 错误", gameObject.name);
+                            }
+                        }
+                        else
+                        {
+                            Debug.LogErrorFormat("找不到 {0}", tRootName);
                         }
                     }
 
@@ -880,13 +921,13 @@ public class NGUITextureCheck : EditorWindow
                 if (tPrefabInfo == null || !tPrefabInfo.gameObject) continue;
                 var tRoot = tPrefabInfo.transform;
                 var tTexture = tRoot.GetComponent<UITexture>();
-                if (CheckTextureIsEqual(tRoot, tTexture, name, string.Empty))
+                if (CheckTextureIsEqual(tRoot, tTexture, this, string.Empty))
                 {
                     AddPathToDic(tPrefabInfo, string.Empty);
                 }
 
                 var tPanel = tRoot.GetComponent<UIPanel>();
-                if (CheckPanelIsEqual(tPanel, name))
+                if (CheckPanelIsEqual(tPanel, this))
                 {
                     AddPathToDic(tPrefabInfo, string.Empty);
                 }
@@ -894,14 +935,14 @@ public class NGUITextureCheck : EditorWindow
                 var tChildTextures = tRoot.GetComponentsInChildren<UITexture>(true);
                 foreach (var tChildTexture in tChildTextures)
                 {
-                    if (!CheckTextureIsEqual(tRoot, tChildTexture, name, string.Empty)) continue;
+                    if (!CheckTextureIsEqual(tRoot, tChildTexture, this, string.Empty)) continue;
                     AddPathToDic(tPrefabInfo, tChildTexture.transform.GetHierarchyByRoot(tRoot));
                 }
 
                 var tChildPanels = tRoot.GetComponentsInChildren<UIPanel>(true);
                 foreach (var tChildPanel in tChildPanels)
                 {
-                    if (!CheckPanelIsEqual(tChildPanel, name)) continue;
+                    if (!CheckPanelIsEqual(tChildPanel, this)) continue;
                     AddPathToDic(tPrefabInfo, tChildPanel.transform.GetHierarchyByRoot(tRoot));
                 }
             }
@@ -954,25 +995,65 @@ public class NGUITextureCheck : EditorWindow
             EditorGUIUtility.PingObject(texture);
         }
 
-        static public Transform GetTrasnformByPath(GameObject pInstance, string pName, string pPath, int pIndex = 0)
+        static public bool operator !=(TextureInfo pInfo, Object pObject)
+        {
+            if (pObject is UITexture)
+            {
+                var tTexture = pObject as UITexture;
+                return tTexture == null || tTexture.mainTexture == null || pInfo.name != tTexture.mainTexture.name;
+            }
+            else if (pObject is UIPanel)
+            {
+                var tPanel = pObject as UIPanel;
+                return tPanel == null || tPanel.clipping != UIDrawCall.Clipping.TextureMask || tPanel.clipTexture == null || tPanel.clipTexture.name != pInfo.name;
+            }
+            return true;
+        }
+
+        static public bool operator ==(TextureInfo pInfo, Object pObject)
+        {
+            if (pObject is UITexture)
+            {
+                var tTexture = pObject as UITexture;
+                return tTexture != null && tTexture.mainTexture != null && pInfo.name == tTexture.mainTexture.name;
+            }
+            else if (pObject is UIPanel)
+            {
+                var tPanel = pObject as UIPanel;
+                return tPanel != null && tPanel.clipping == UIDrawCall.Clipping.TextureMask && tPanel.clipTexture != null && tPanel.clipTexture.name == pInfo.name;
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            return base.Equals(obj);
+        }
+
+        static public Transform GetTrasnformByPath(GameObject pInstance, TextureInfo pInfo, string pPath, int pIndex = 0)
         {
             if (pInstance == null) return null;
             if (pPath.IsNullOrEmpty())
             {
                 var tTexture = pInstance.GetComponent<UITexture>();
-                if (CheckTextureIsEqual(pInstance.transform, tTexture, pName, pPath))
+                if (CheckTextureIsEqual(pInstance.transform, tTexture, pInfo, pPath))
                 {
                     return tTexture.transform;
                 }
 
                 var tPanel = pInstance.GetComponent<UIPanel>();
-                if (CheckPanelIsEqual(tPanel, pName))
+                if (CheckPanelIsEqual(tPanel, pInfo))
                 {
                     return tPanel.transform;
                 }
             }
 
-            var tChildTextures = pInstance.transform.GetComponentsInChildren<UITexture>(true).Where(x => CheckTextureIsEqual(pInstance.transform, x, pName, pPath));
+            var tChildTextures = pInstance.transform.GetComponentsInChildren<UITexture>(true).Where(x => CheckTextureIsEqual(pInstance.transform, x, pInfo, pPath));
             if (tChildTextures != null && tChildTextures.Count() > 0)
             {
                 if (pIndex >= 0 && pIndex < tChildTextures.Count())
@@ -985,7 +1066,7 @@ public class NGUITextureCheck : EditorWindow
                 }
             }
 
-            var tChildPanels = pInstance.transform.GetComponentsInChildren<UIPanel>(true).Where(x => CheckPanelIsEqual(x, pName));
+            var tChildPanels = pInstance.transform.GetComponentsInChildren<UIPanel>(true).Where(x => CheckPanelIsEqual(x, pInfo));
             if (tChildPanels != null && tChildPanels.Count() > 0)
             {
                 if (pIndex >= 0 && pIndex < tChildPanels.Count())
@@ -1001,9 +1082,9 @@ public class NGUITextureCheck : EditorWindow
             return null;
         }
 
-        static public bool CheckTextureIsEqual(Transform pRoot, UITexture pTex, string pName, string pPath)
+        static public bool CheckTextureIsEqual(Transform pRoot, UITexture pTex, TextureInfo pInfo, string pPath)
         {
-            if (pTex == null || pTex.mainTexture == null || pTex.mainTexture.name != pName)
+            if (pInfo != pTex)
             {
                 return false;
             }
@@ -1014,9 +1095,9 @@ public class NGUITextureCheck : EditorWindow
             return true;
         }
 
-        static public bool CheckPanelIsEqual(UIPanel pPanel, string pName)
+        static public bool CheckPanelIsEqual(UIPanel pPanel, TextureInfo pInfo)
         {
-            if (pPanel == null || pPanel.clipping != UIDrawCall.Clipping.TextureMask || pPanel.clipTexture == null)
+            if (pInfo != pPanel)
             {
                 return false;
             }
