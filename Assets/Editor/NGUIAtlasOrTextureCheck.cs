@@ -8,24 +8,38 @@ using Object = UnityEngine.Object;
 using System;
 using System.Text.RegularExpressions;
 
-public class NGUITextureCheck : EditorWindow
+public class NGUIAtlasOrTextureCheck : EditorWindow
 {
-    static NGUITextureCheck sInstance;
+    static NGUIAtlasOrTextureCheck sInstance;
 
-    [MenuItem("小工具/Texture引用检测")]
-    static void ShowWindow()
+    [MenuItem("小工具/Atlas|Texture引用检测")]
+    static public void ShowWindow()
     {
-        sInstance = GetWindow<NGUITextureCheck>();
-        sInstance.title = "Texture引用检测";
+        ShowWindow(ViewType.Texture);
+    }
+    static public void ShowWindow(ViewType pViewType)
+    {
+        sInstance = GetWindow<NGUIAtlasOrTextureCheck>();
+        sInstance.title = "Atlas|Texture引用检测";
+        sInstance.mViewType = pViewType;
         sInstance.Show();
     }
 
     static public void LocationTexture(string pTextureName)
     {
-        var tHasWindow = Resources.FindObjectsOfTypeAll<EditorWindow>().ToList().Find(x => x.GetType() == typeof(NGUITextureCheck)) != null;
-        ShowWindow();
+        var tHasWindow = Resources.FindObjectsOfTypeAll<EditorWindow>().ToList().Find(x => x.GetType() == typeof(NGUIAtlasOrTextureCheck)) != null;
+        ShowWindow(ViewType.Texture);
         if (!tHasWindow) sInstance.CheckTextureReference();
-        sInstance.mSearchText = pTextureName;
+        sInstance.SetSearchText(pTextureName);
+        sInstance.Focus();
+    }
+
+    static public void LocationAtlas(string pAtlasName)
+    {
+        var tHasWindow = Resources.FindObjectsOfTypeAll<EditorWindow>().ToList().Find(x => x.GetType() == typeof(NGUIAtlasOrTextureCheck)) != null;
+        ShowWindow(ViewType.Atlas);
+        if (!tHasWindow) sInstance.CheckAtlasReference();
+        sInstance.SetSearchText(pAtlasName);
         sInstance.Focus();
     }
 
@@ -48,6 +62,7 @@ public class NGUITextureCheck : EditorWindow
         Atlas,
     }
 
+    public const string cRootPath = "UI Root";
     public const string cPrefabPath = "Assets/UI/Prefabs";
     public const string cTexturePath = "Assets/UI/Atlas/CommonTextures";
     public const string cAtlasPath = "Assets/UI/Atlas";
@@ -68,13 +83,29 @@ public class NGUITextureCheck : EditorWindow
     List<TextureInfo> mTextureInfos;
     List<AtlasInfo> mAtlasInfos;
     SortType mSortType = SortType.Name;
-    string mSearchText;
+    Dictionary<ViewType, string> mSearchTextDic = new Dictionary<ViewType, string>();
     SortType mLastSortTyp = 0;
     bool mDescending;
     bool mInitTexture;
     bool mInitAtlas;
     bool mMatchFullName;
     ViewType mViewType;
+
+    public void SetSearchText(ViewType pType, string pSearchText)
+    {
+        if (!mSearchTextDic.ContainsKey(pType)) mSearchTextDic.Add(pType, string.Empty);
+        mSearchTextDic[pType] = pSearchText;
+    }
+    public void SetSearchText(string pSearchText)
+    {
+        if (!mSearchTextDic.ContainsKey(mViewType)) mSearchTextDic.Add(mViewType, string.Empty);
+        mSearchTextDic[mViewType] = pSearchText;
+    }
+    string GetSearchText()
+    {
+        if (!mSearchTextDic.ContainsKey(mViewType)) mSearchTextDic.Add(mViewType, string.Empty);
+        return mSearchTextDic[mViewType];
+    }
 
     /// <summary>
     /// 检测所有Texture引用
@@ -93,12 +124,6 @@ public class NGUITextureCheck : EditorWindow
             mTextureInfos.Add(new TextureInfo(item));
         }
 
-        mTextureInfos = new List<TextureInfo>();
-        foreach (var item in GetAllAssetsByPath(new string[] { cTexturePath }, "t:texture", "Texture数据初始化"))
-        {
-            mTextureInfos.Add(new TextureInfo(item));
-        }
-
         if (!tPrefabInfos.IsNullOrEmpty())
         {
             for (int i = 0, imax = mTextureInfos.Count; i < imax; i++)
@@ -106,7 +131,7 @@ public class NGUITextureCheck : EditorWindow
                 var tInfo = mTextureInfos[i];
                 var tPrefabs = tPrefabInfos.FindAll(x => x.ExistGuid(tInfo.guid));
                 if (tPrefabs.IsNullOrEmpty()) continue;
-                tInfo.UpdateReference(tPrefabInfos);
+                tInfo.UpdateReference(tPrefabs);
                 EditorUtility.DisplayProgressBar(string.Empty, "查找Texture引用", i / (float)imax);
             }
         }
@@ -138,7 +163,7 @@ public class NGUITextureCheck : EditorWindow
                 var tInfo = mAtlasInfos[i];
                 var tPrefabs = tPrefabInfos.FindAll(x => x.ExistGuid(tInfo.guid));
                 if (tPrefabs.IsNullOrEmpty()) continue;
-                tInfo.UpdateReference(tPrefabInfos);
+                tInfo.UpdateReference(tPrefabs);
                 EditorUtility.DisplayProgressBar(string.Empty, "查找Atlas引用", i / (float)imax);
             }
         }
@@ -163,7 +188,6 @@ public class NGUITextureCheck : EditorWindow
     IEnumerable<AssetInfo> GetAllAssetsByPath(string[] pPaths, string pFilter, string pProgressText)
     {
         var tGuids = AssetDatabase.FindAssets(pFilter, pPaths);
-        var tPrefabInfos = new List<PrefabInfo>(tGuids.Length);
         for (int i = 0, imax = tGuids.Length; i < imax; i++)
         {
             var tGuid = tGuids[i];
@@ -177,11 +201,10 @@ public class NGUITextureCheck : EditorWindow
 
     void OnGUI()
     {
-        EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
-        mViewType = (ViewType)EditorGUILayout.Popup((int)mViewType, sViewTypeNames, GUILayout.Width(150));
-        EditorGUILayout.LabelField("排序类型", GUILayout.Width(50));
-        mSortType = (SortType)EditorGUILayout.Popup((int)mSortType, sSortTypeNames, GUILayout.Width(50));
-        if (GUILayout.Button(mDescending ? "顺序" : "逆序", GUILayout.Width(50)))
+        EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
+        mViewType = (ViewType)EditorGUILayout.Popup((int)mViewType, sViewTypeNames, EditorStyles.toolbarPopup, GUILayout.Width(100));
+        mSortType = (SortType)EditorGUILayout.Popup((int)mSortType, sSortTypeNames, EditorStyles.toolbarPopup, GUILayout.Width(50));
+        if (GUILayout.Button(mDescending ? "顺序" : "逆序", EditorStyles.toolbarButton))
         {
             mLastSortTyp = 0;
             mDescending = !mDescending;
@@ -189,12 +212,12 @@ public class NGUITextureCheck : EditorWindow
         GUI.changed = false;
         using (var s = new EditorGUILayout.HorizontalScope())
         {
-            mSearchText = EditorGUILayout.TextField(string.Empty, mSearchText, "SearchTextField", GUILayout.MinWidth(50));
-            if (GUILayout.Button(mSearchText, mSearchText.IsNullOrEmpty() ? "SearchCancelButtonEmpty" : "SearchCancelButton"))
+            SetSearchText(EditorGUILayout.TextField(string.Empty, GetSearchText(), "ToolbarSeachTextField", GUILayout.MinWidth(50)));
+            if (GUILayout.Button(GetSearchText(), GetSearchText().IsNullOrEmpty() ? "ToolbarSeachCancelButtonEmpty" : "ToolbarSeachCancelButton"))
             {
-                if (!mSearchText.IsNullOrEmpty())
+                if (!GetSearchText().IsNullOrEmpty())
                 {
-                    mSearchText = string.Empty;
+                    SetSearchText(string.Empty);
                     GUI.FocusControl(string.Empty);
                 }
             }
@@ -255,7 +278,7 @@ public class NGUITextureCheck : EditorWindow
         for (int i = 0; i < mTextureInfos.Count; i++)
         {
             var item = mTextureInfos[i];
-            if (!IsMatchName(ref mSearchText, item.name, mSearchText)) continue;
+            if (!IsMatchName(item.name, GetSearchText())) continue;
             EditorGUILayout.BeginVertical();
             {
                 EditorGUILayout.BeginHorizontal();
@@ -288,9 +311,10 @@ public class NGUITextureCheck : EditorWindow
                 var tTextureNames = new string[tObjects.Length];
                 for (int i = 0; i < tObjects.Length; i++)
                 {
+                    if (!(tObjects[i] is Texture2D)) continue;
                     tTextureNames[i] = tObjects[i].name;
                 }
-                mSearchText = string.Join("|", tTextureNames);
+                SetSearchText(string.Join("|", tTextureNames));
             }
         }
 
@@ -303,6 +327,7 @@ public class NGUITextureCheck : EditorWindow
     void DrawAtlasView()
     {
         EditorGUILayout.BeginHorizontal();
+        EditorGUILayout.HelpBox(string.Format("拖拽{0}下的Atlas到该窗口下可以快速查看该Atlas的引用", cAtlasPath), MessageType.Info);
         if (GUILayout.Button("检测所有Atlas引用", GUILayout.Height(40)))
         {
             CheckAtlasReference();
@@ -327,7 +352,7 @@ public class NGUITextureCheck : EditorWindow
         for (int i = 0; i < mAtlasInfos.Count; i++)
         {
             var item = mAtlasInfos[i];
-            if (!IsMatchName(ref mSearchText, item.name, mSearchText)) continue;
+            if (!IsMatchName(item.name, GetSearchText())) continue;
             EditorGUILayout.BeginVertical();
             {
                 EditorGUILayout.BeginHorizontal();
@@ -350,9 +375,30 @@ public class NGUITextureCheck : EditorWindow
         EditorGUILayout.EndVertical();
         EditorGUILayout.EndHorizontal();
         EditorGUILayout.EndScrollView();
+
+        if (Event.current.type == EventType.DragUpdated)
+        {
+            mMatchFullName = true;
+            var tObjects = DragAndDrop.objectReferences;
+            if (tObjects != null && tObjects.Length > 0)
+            {
+                var tAtlasNames = new string[tObjects.Length];
+                for (int i = 0; i < tObjects.Length; i++)
+                {
+                    if (!(tObjects[i] is GameObject) || !(tObjects[i] as GameObject).GetComponent<UIAtlas>()) continue;
+                    tAtlasNames[i] = tObjects[i].name;
+                }
+                SetSearchText(string.Join("|", tAtlasNames));
+            }
+        }
+
+        if (GUI.Button(new Rect(Vector2.zero, position.size), string.Empty, GUIStyle.none))
+        {
+            GUI.FocusControl(string.Empty);
+        }
     }
 
-    bool IsMatchName(ref string pSearchText, string pName1, string pName2)
+    bool IsMatchName(string pName1, string pName2)
     {
         if (pName2.IsNullOrEmpty()) return true;
         try
@@ -393,7 +439,7 @@ public class NGUITextureCheck : EditorWindow
         catch
         {
             Debug.LogError("输入有误");
-            pSearchText = string.Empty;
+            SetSearchText(string.Empty);
             GUI.FocusControl(string.Empty);
             return false;
         }
@@ -429,17 +475,19 @@ public class NGUITextureCheck : EditorWindow
         {
             atlas = gameObject == null ? null : gameObject.GetComponent<UIAtlas>();
             texture = atlas.texture;
+            size = texture == null ? Vector2.zero : new Vector2(texture.width, texture.height);
         }
 
         Dictionary<PrefabInfo, List<string>> mReferenceDic;
 
         public UIAtlas atlas { private set; get; }
         public Texture texture { private set; get; }
+        public Vector2 size { private set; get; }
         public override string guiName
         {
             get
             {
-                return string.Format("name:{0} count:{1}", name, prefabInfos.GetCountIgnoreNull());
+                return string.Format("{0} Count:{1} Size:{2}*{3}", name, prefabInfos.GetCountIgnoreNull(), (int)size.x, (int)size.y);
             }
         }
         public List<string> spriteNames
@@ -532,10 +580,12 @@ public class NGUITextureCheck : EditorWindow
             {
                 var tCount = referenceDic[item].GetCountIgnoreNull();
                 if (tCount == 0) continue;
-                item.optionNames = new string[tCount];
+                if (item.optionNames == null) item.optionNames = new Dictionary<BaseInfo, string[]>();
+                if (!item.optionNames.ContainsKey(this)) item.optionNames.Add(this, null);
+                item.optionNames[this] = new string[tCount];
                 for (int i = 0; i < tCount; i++)
                 {
-                    item.optionNames[i] = "定位Sprite" + i;
+                    item.optionNames[this][i] = "定位Sprite" + i;
                 }
             }
         }
@@ -618,7 +668,12 @@ public class NGUITextureCheck : EditorWindow
                     });
                     break;
                 case SortType.Size:
-                    throw new NotImplementedException("未实现");
+                    pInfos.Sort((x, y) =>
+                    {
+                        var xs = x.size.x * x.size.y;
+                        var ys = y.size.x * y.size.y;
+                        return xs.CompareTo(ys) * (pDescending ? -1 : 1);
+                    });
                     break;
             }
         }
@@ -626,25 +681,23 @@ public class NGUITextureCheck : EditorWindow
         static public Transform GetTrasnformByPath(GameObject pInstance, AtlasInfo pInfo, string pPath, int pIndex = 0)
         {
             if (pInstance == null) return null;
-            if (pPath.IsNullOrEmpty())
-            {
-                var tSprite = pInstance.GetComponent<UISprite>();
-                if (CheckSpriteIsEqual(pInstance.transform, tSprite, pInfo, pPath))
-                {
-                    return tSprite.transform;
-                }
-            }
 
-            var tChildSprites = pInstance.transform.GetComponentsInChildren<UISprite>(true).Where(x => CheckSpriteIsEqual(pInstance.transform, x, pInfo, pPath));
-            if (tChildSprites != null && tChildSprites.Count() > 0)
+            var tSprites = new List<UISprite>();
+            var tSprite = pInstance.GetComponent<UISprite>();
+            if (CheckSpriteIsEqual(pInstance.transform, tSprite, pInfo, string.Empty)) tSprites.Add(tSprite);
+
+            var tChildSprites = pInstance.transform.GetComponentsInChildren<UISprite>(true).Where(x => CheckSpriteIsEqual(pInstance.transform, x, pInfo, string.Empty));
+            tSprites.AddRange(tChildSprites);
+
+            if (tSprites != null && tSprites.Count > 0)
             {
-                if (pIndex >= 0 && pIndex < tChildSprites.Count())
+                if (pIndex >= 0 && pIndex < tSprites.Count)
                 {
-                    return tChildSprites.ElementAt(pIndex).transform;
+                    return tSprites[pIndex].transform;
                 }
                 else
                 {
-                    return tChildSprites.First().transform;
+                    return tSprites[0].transform;
                 }
             }
 
@@ -690,7 +743,7 @@ public class NGUITextureCheck : EditorWindow
                 base.name = value;
             }
         }
-        public string[] optionNames { set; get; }
+        public Dictionary<BaseInfo, string[]> optionNames { set; get; }
         public int selectOptionIndex { set; get; }
 
         /// <summary>
@@ -714,19 +767,19 @@ public class NGUITextureCheck : EditorWindow
             if (pInfo == null) return;
             var tPaths = pInfo.referenceDic.ContainsKey(this) ? pInfo.referenceDic[this] : null;
 
-            EditorGUILayout.BeginHorizontal("AS TextureArea", GUILayout.MinHeight(20));
+            EditorGUILayout.BeginHorizontal("AS TextArea", GUILayout.MinHeight(20));
             var tReferenceCount = tPaths.GetCountIgnoreNull();
             EditorGUILayout.LabelField(name + " Count:" + tReferenceCount);
             if (gameObject != null && GUILayout.Button("定位Prefab", GUILayout.Width(80)))
             {
                 Select();
             }
-            if (tReferenceCount > 0)
+            if (tReferenceCount > 0 && optionNames != null && optionNames.ContainsKey(pInfo))
             {
                 GUI.changed = false;
                 if (tReferenceCount > 1)
                 {
-                    selectOptionIndex = EditorGUILayout.Popup(selectOptionIndex, optionNames, GUILayout.Width(90));
+                    selectOptionIndex = EditorGUILayout.Popup(selectOptionIndex, optionNames[pInfo], GUILayout.Width(90));
                 }
                 if (GUI.changed || (tReferenceCount == 1 && GUILayout.Button("定位Texture", GUILayout.Width(90))))
                 {
@@ -736,8 +789,7 @@ public class NGUITextureCheck : EditorWindow
                     var tGo = GameObject.Find(name);
                     if (tGo == null)
                     {
-                        const string tRootName = "UI Root";
-                        var tRoot = GameObject.Find(tRootName);
+                        var tRoot = GameObject.Find(cRootPath);
                         if (tRoot != null)
                         {
                             tGo = PrefabUtility.InstantiatePrefab(gameObject) as GameObject;
@@ -755,7 +807,7 @@ public class NGUITextureCheck : EditorWindow
                         }
                         else
                         {
-                            Debug.LogErrorFormat("找不到 {0}", tRootName);
+                            Debug.LogErrorFormat("找不到 {0}", cRootPath);
                         }
                     }
 
@@ -776,7 +828,7 @@ public class NGUITextureCheck : EditorWindow
             if (pInfo == null) return;
             var tPaths = pInfo.referenceDic.ContainsKey(this) ? pInfo.referenceDic[this] : null;
 
-            EditorGUILayout.BeginHorizontal("AS TextureArea", GUILayout.MinHeight(20));
+            EditorGUILayout.BeginHorizontal("AS TextArea", GUILayout.MinHeight(20));
             var tReferenceCount = tPaths.GetCountIgnoreNull();
             EditorGUILayout.LabelField(name + " Count:" + tReferenceCount);
             if (gameObject != null && GUILayout.Button("定位Prefab", GUILayout.Width(80)))
@@ -786,9 +838,9 @@ public class NGUITextureCheck : EditorWindow
             if (tReferenceCount > 0)
             {
                 GUI.changed = false;
-                if (tReferenceCount > 1)
+                if (tReferenceCount > 1 && optionNames != null && optionNames.ContainsKey(pInfo))
                 {
-                    selectOptionIndex = EditorGUILayout.Popup(selectOptionIndex, optionNames, GUILayout.Width(90));
+                    selectOptionIndex = EditorGUILayout.Popup(selectOptionIndex, optionNames[pInfo], GUILayout.Width(90));
                 }
                 if (GUI.changed || (tReferenceCount == 1 && GUILayout.Button("定位Sprite", GUILayout.Width(90))))
                 {
@@ -798,11 +850,9 @@ public class NGUITextureCheck : EditorWindow
                     var tGo = GameObject.Find(name);
                     if (tGo == null)
                     {
-                        const string tRootName = "UI Root";
-                        var tRoot = GameObject.Find("UI Root");
+                        var tRoot = GameObject.Find(cRootPath);
                         if (tRoot != null)
                         {
-                            Debug.Log(gameObject.name, gameObject);
                             tGo = PrefabUtility.InstantiatePrefab(gameObject) as GameObject;
                             if (tGo != null)
                             {
@@ -818,7 +868,7 @@ public class NGUITextureCheck : EditorWindow
                         }
                         else
                         {
-                            Debug.LogErrorFormat("找不到 {0}", tRootName);
+                            Debug.LogErrorFormat("找不到 {0}", cRootPath);
                         }
                     }
 
@@ -968,10 +1018,12 @@ public class NGUITextureCheck : EditorWindow
             {
                 var tCount = referenceDic[item].GetCountIgnoreNull();
                 if (tCount == 0) continue;
-                item.optionNames = new string[tCount];
+                if (item.optionNames == null) item.optionNames = new Dictionary<BaseInfo, string[]>();
+                if (!item.optionNames.ContainsKey(this)) item.optionNames.Add(this, null);
+                item.optionNames[this] = new string[tCount];
                 for (int i = 0; i < tCount; i++)
                 {
-                    item.optionNames[i] = "定位Texture" + i;
+                    item.optionNames[this][i] = "定位Texture" + i;
                 }
             }
         }
@@ -1038,44 +1090,45 @@ public class NGUITextureCheck : EditorWindow
         static public Transform GetTrasnformByPath(GameObject pInstance, TextureInfo pInfo, string pPath, int pIndex = 0)
         {
             if (pInstance == null) return null;
-            if (pPath.IsNullOrEmpty())
+            var tTextures = new List<UITexture>();
+            var tTexture = pInstance.GetComponent<UITexture>();
+            if (CheckTextureIsEqual(pInstance.transform, tTexture, pInfo, pPath))
             {
-                var tTexture = pInstance.GetComponent<UITexture>();
-                if (CheckTextureIsEqual(pInstance.transform, tTexture, pInfo, pPath))
-                {
-                    return tTexture.transform;
-                }
-
-                var tPanel = pInstance.GetComponent<UIPanel>();
-                if (CheckPanelIsEqual(tPanel, pInfo))
-                {
-                    return tPanel.transform;
-                }
+                tTextures.Add(tTexture);
             }
 
-            var tChildTextures = pInstance.transform.GetComponentsInChildren<UITexture>(true).Where(x => CheckTextureIsEqual(pInstance.transform, x, pInfo, pPath));
-            if (tChildTextures != null && tChildTextures.Count() > 0)
+            var tChildTextures = pInstance.transform.GetComponentsInChildren<UITexture>(true).Where(x => CheckTextureIsEqual(pInstance.transform, x, pInfo, string.Empty));
+            tTextures.AddRange(tChildTextures);
+            if (tTextures != null && tTextures.Count > 0)
             {
-                if (pIndex >= 0 && pIndex < tChildTextures.Count())
+                if (pIndex >= 0 && pIndex < tTextures.Count)
                 {
-                    return tChildTextures.ElementAt(pIndex).transform;
+                    return tTextures[pIndex].transform;
                 }
                 else
                 {
-                    return tChildTextures.First().transform;
+                    return tTextures[0].transform;
                 }
+            }
+
+            var tPanels = new List<UIPanel>();
+            var tPanel = pInstance.GetComponent<UIPanel>();
+            if (CheckPanelIsEqual(tPanel, pInfo))
+            {
+                tPanels.Add(tPanel);
             }
 
             var tChildPanels = pInstance.transform.GetComponentsInChildren<UIPanel>(true).Where(x => CheckPanelIsEqual(x, pInfo));
-            if (tChildPanels != null && tChildPanels.Count() > 0)
+            tPanels.AddRange(tChildPanels);
+            if (tPanels != null && tPanels.Count > 0)
             {
-                if (pIndex >= 0 && pIndex < tChildPanels.Count())
+                if (pIndex >= 0 && pIndex < tPanels.Count)
                 {
-                    return tChildPanels.ElementAt(pIndex).transform;
+                    return tPanels[pIndex].transform;
                 }
                 else
                 {
-                    return tChildPanels.First().transform;
+                    return tPanels[0].transform;
                 }
             }
 
