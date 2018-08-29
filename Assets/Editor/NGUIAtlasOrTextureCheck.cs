@@ -86,6 +86,7 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
     Dictionary<ViewType, string> mSearchTextDic = new Dictionary<ViewType, string>();
     SortType mLastSortTyp = 0;
     bool mDescending;
+    bool mDescendingToggle;
     bool mInitTexture;
     bool mInitAtlas;
     bool mMatchFullName;
@@ -202,9 +203,11 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
     void OnGUI()
     {
         EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
-        mViewType = (ViewType)EditorGUILayout.Popup((int)mViewType, sViewTypeNames, EditorStyles.toolbarPopup, GUILayout.Width(100));
-        mSortType = (SortType)EditorGUILayout.Popup((int)mSortType, sSortTypeNames, EditorStyles.toolbarPopup, GUILayout.Width(50));
-        if (GUILayout.Button(mDescending ? "顺序" : "逆序", EditorStyles.toolbarButton))
+        mViewType = (ViewType)EditorGUILayout.Popup((int)mViewType, sViewTypeNames, EditorStyles.toolbarDropDown, GUILayout.Width(100));
+        mSortType = (SortType)EditorGUILayout.Popup((int)mSortType, sSortTypeNames, EditorStyles.toolbarDropDown, GUILayout.Width(50));
+        GUI.changed = false;
+        mDescendingToggle = GUILayout.Toggle(mDescendingToggle, mDescending ? "逆序" : "顺序", EditorStyles.toolbarButton);
+        if (GUI.changed)
         {
             mLastSortTyp = 0;
             mDescending = !mDescending;
