@@ -311,13 +311,16 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
             var tObjects = DragAndDrop.objectReferences;
             if (tObjects != null && tObjects.Length > 0)
             {
-                var tTextureNames = new string[tObjects.Length];
+                var tTextureNames = new List<string>(tObjects.Length);
                 for (int i = 0; i < tObjects.Length; i++)
                 {
                     if (!(tObjects[i] is Texture2D)) continue;
-                    tTextureNames[i] = tObjects[i].name;
+                    tTextureNames.Add(tObjects[i].name);
                 }
-                SetSearchText(string.Join("|", tTextureNames));
+                if (!tTextureNames.IsNullOrEmpty())
+                {
+                    SetSearchText(string.Join("|", tTextureNames.ToArray()));
+                }
             }
         }
 
@@ -385,13 +388,16 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
             var tObjects = DragAndDrop.objectReferences;
             if (tObjects != null && tObjects.Length > 0)
             {
-                var tAtlasNames = new string[tObjects.Length];
+                var tAtlasNames = new List<string>(tObjects.Length);
                 for (int i = 0; i < tObjects.Length; i++)
                 {
                     if (!(tObjects[i] is GameObject) || !(tObjects[i] as GameObject).GetComponent<UIAtlas>()) continue;
-                    tAtlasNames[i] = tObjects[i].name;
+                    tAtlasNames.Add(tObjects[i].name);
                 }
-                SetSearchText(string.Join("|", tAtlasNames));
+                if (!tAtlasNames.IsNullOrEmpty())
+                {
+                    SetSearchText(string.Join("|", tAtlasNames.ToArray()));
+                }
             }
         }
 
