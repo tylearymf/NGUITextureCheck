@@ -91,6 +91,8 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
     bool mInitAtlas;
     bool mMatchFullName;
     ViewType mViewType;
+    static List<string> mDragItemNames = new List<string>();
+    static string mDragContent;
 
     public void SetSearchText(ViewType pType, string pSearchText)
     {
@@ -251,6 +253,57 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
                 DrawAtlasView();
                 break;
         }
+
+        switch (Event.current.type)
+        {
+            case EventType.DragUpdated:
+                var tObjects = DragAndDrop.objectReferences;
+                if (!tObjects.IsNullOrEmpty())
+                {
+                    mDragItemNames.Clear();
+                    for (int i = 0; i < tObjects.Length; i++)
+                    {
+                        switch (mViewType)
+                        {
+                            case ViewType.Texture:
+                                if (!(tObjects[i] is Texture2D)) continue;
+                                break;
+                            case ViewType.Atlas:
+                                if (!(tObjects[i] is GameObject) || !(tObjects[i] as GameObject).GetComponent<UIAtlas>()) continue;
+                                break;
+                        }
+                        mDragItemNames.Add(tObjects[i].name);
+                    }
+
+                    if (!mDragItemNames.IsNullOrEmpty())
+                    {
+                        mDragContent = string.Join("\n", mDragItemNames.ToArray());
+                    }
+                    Event.current.Use();
+                }
+                break;
+            case EventType.DragExited:
+                if (mouseOverWindow == this && !mDragItemNames.IsNullOrEmpty())
+                {
+                    mMatchFullName = true;
+                    SetSearchText(string.Join("|", mDragItemNames.ToArray()));
+                }
+                mDragContent = null;
+                mDragItemNames.Clear();
+                Focus();
+                break;
+        }
+
+        if (!mDragContent.IsNullOrEmpty())
+        {
+            EditorGUIUtility.AddCursorRect(new Rect((Vector2)Event.current.mousePosition, new Vector2(50, 50)), MouseCursor.ArrowPlus);
+            GUI.Box(new Rect(Event.current.mousePosition, new Vector2(200, 15 * mDragItemNames.Count + 30)), "松手后搜索\n移出窗口取消搜索\n" + mDragContent, "box");
+        }
+
+        if (GUI.Button(new Rect(Vector2.zero, position.size), string.Empty, GUIStyle.none))
+        {
+            GUI.FocusControl(string.Empty);
+        }
     }
 
     void DrawTextureView()
@@ -304,30 +357,6 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
         EditorGUILayout.EndVertical();
         EditorGUILayout.EndHorizontal();
         EditorGUILayout.EndScrollView();
-
-        if (Event.current.type == EventType.DragUpdated)
-        {
-            mMatchFullName = true;
-            var tObjects = DragAndDrop.objectReferences;
-            if (tObjects != null && tObjects.Length > 0)
-            {
-                var tTextureNames = new List<string>(tObjects.Length);
-                for (int i = 0; i < tObjects.Length; i++)
-                {
-                    if (!(tObjects[i] is Texture2D)) continue;
-                    tTextureNames.Add(tObjects[i].name);
-                }
-                if (!tTextureNames.IsNullOrEmpty())
-                {
-                    SetSearchText(string.Join("|", tTextureNames.ToArray()));
-                }
-            }
-        }
-
-        if (GUI.Button(new Rect(Vector2.zero, position.size), string.Empty, GUIStyle.none))
-        {
-            GUI.FocusControl(string.Empty);
-        }
     }
 
     void DrawAtlasView()
@@ -381,30 +410,6 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
         EditorGUILayout.EndVertical();
         EditorGUILayout.EndHorizontal();
         EditorGUILayout.EndScrollView();
-
-        if (Event.current.type == EventType.DragUpdated)
-        {
-            mMatchFullName = true;
-            var tObjects = DragAndDrop.objectReferences;
-            if (tObjects != null && tObjects.Length > 0)
-            {
-                var tAtlasNames = new List<string>(tObjects.Length);
-                for (int i = 0; i < tObjects.Length; i++)
-                {
-                    if (!(tObjects[i] is GameObject) || !(tObjects[i] as GameObject).GetComponent<UIAtlas>()) continue;
-                    tAtlasNames.Add(tObjects[i].name);
-                }
-                if (!tAtlasNames.IsNullOrEmpty())
-                {
-                    SetSearchText(string.Join("|", tAtlasNames.ToArray()));
-                }
-            }
-        }
-
-        if (GUI.Button(new Rect(Vector2.zero, position.size), string.Empty, GUIStyle.none))
-        {
-            GUI.FocusControl(string.Empty);
-        }
     }
 
     bool IsMatchName(string pName1, string pName2)
