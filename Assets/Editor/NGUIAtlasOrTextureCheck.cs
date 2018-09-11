@@ -620,13 +620,15 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
         static public bool operator !=(AtlasInfo pInfo, UISprite pSprite)
         {
             if (pSprite == null) return true;
-            return pInfo.atlas != pSprite.atlas || pInfo.spriteNames.IsNullOrEmpty() || !pInfo.spriteNames.Contains(pSprite.spriteName);
+            //存在一些SpriteName不存在该图集的情况，所以只判断下图集是否一致即可
+            return pInfo.atlas != pSprite.atlas;// || pInfo.spriteNames.IsNullOrEmpty() || !pInfo.spriteNames.Contains(pSprite.spriteName);
         }
 
         static public bool operator ==(AtlasInfo pInfo, UISprite pSprite)
         {
             if (pSprite == null) return false;
-            return pInfo.atlas == pSprite.atlas && !pInfo.spriteNames.IsNullOrEmpty() && pInfo.spriteNames.Contains(pSprite.spriteName);
+            //存在一些SpriteName不存在该图集的情况，所以只判断下图集是否一致即可
+            return pInfo.atlas == pSprite.atlas;// && !pInfo.spriteNames.IsNullOrEmpty() && pInfo.spriteNames.Contains(pSprite.spriteName);
         }
 
         public override int GetHashCode()
