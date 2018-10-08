@@ -20,7 +20,7 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
     static public void ShowWindow(ViewType pViewType)
     {
         sInstance = GetWindow<NGUIAtlasOrTextureCheck>();
-        sInstance.title = "Atlas|Texture引用检测";
+        sInstance.titleContent = new GUIContent("Atlas|Texture引用检测");
         sInstance.mViewType = pViewType;
         sInstance.Show();
     }
@@ -116,13 +116,15 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
     void CheckTextureReference()
     {
         var tPrefabInfos = new List<PrefabInfo>();
-        foreach (var item in GetAllAssetsByPath(new string[] { cPrefabPath }, "t:prefab", "Prefab数据初始化"))
+        var tInfos = GetAllAssetsByPath(new string[] { cPrefabPath }, "t:prefab", "Prefab数据初始化");
+        foreach (var item in tInfos)
         {
             tPrefabInfos.Add(new PrefabInfo(item));
         }
 
         mTextureInfos = new List<TextureInfo>();
-        foreach (var item in GetAllAssetsByPath(new string[] { cTexturePath }, "t:texture", "Texture数据初始化"))
+        tInfos = GetAllAssetsByPath(new string[] { cTexturePath }, "t:texture", "Texture数据初始化");
+        foreach (var item in tInfos)
         {
             mTextureInfos.Add(new TextureInfo(item));
         }
@@ -148,13 +150,15 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
     void CheckAtlasReference()
     {
         var tPrefabInfos = new List<PrefabInfo>();
-        foreach (var item in GetAllAssetsByPath(new string[] { cPrefabPath }, "t:prefab", "Prefab数据初始化"))
+        var tInfos = GetAllAssetsByPath(new string[] { cPrefabPath }, "t:prefab", "Prefab数据初始化");
+        foreach (var item in tInfos)
         {
             tPrefabInfos.Add(new PrefabInfo(item));
         }
 
         mAtlasInfos = new List<AtlasInfo>();
-        foreach (var item in GetAllAssetsByPath(new string[] { cAtlasPath }, "t:prefab", "Atlas数据初始化"))
+        tInfos = GetAllAssetsByPath(new string[] { cAtlasPath }, "t:prefab", "Atlas数据初始化");
+        foreach (var item in tInfos)
         {
             mAtlasInfos.Add(new AtlasInfo(item));
         }
@@ -267,9 +271,11 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
                         {
                             case ViewType.Texture:
                                 if (!(tObjects[i] is Texture2D)) continue;
+                                if (!mInitTexture) CheckTextureReference();
                                 break;
                             case ViewType.Atlas:
                                 if (!(tObjects[i] is GameObject) || !(tObjects[i] as GameObject).GetComponent<UIAtlas>()) continue;
+                                if (!mInitAtlas) CheckAtlasReference();
                                 break;
                         }
                         mDragItemNames.Add(tObjects[i].name);
@@ -319,10 +325,6 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
 
         if (mTextureInfos.IsNullOrEmpty())
         {
-            if (Event.current.type == EventType.DragUpdated)
-            {
-                if (!mInitTexture) CheckTextureReference();
-            }
             return;
         }
 
@@ -372,10 +374,6 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
 
         if (mAtlasInfos.IsNullOrEmpty())
         {
-            if (Event.current.type == EventType.DragUpdated)
-            {
-                if (!mInitAtlas) CheckAtlasReference();
-            }
             return;
         }
 
@@ -492,8 +490,6 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
             size = texture == null ? Vector2.zero : new Vector2(texture.width, texture.height);
         }
 
-        Dictionary<PrefabInfo, List<string>> mReferenceDic;
-
         public UIAtlas atlas { private set; get; }
         public Texture texture { private set; get; }
         public Vector2 size { private set; get; }
@@ -515,133 +511,40 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
         /// 以下prefab里面引用这该texture
         /// </summary>
         public List<PrefabInfo> prefabInfos { private set; get; }
-        List<SerializaTextureDictionary> serializaReference { set; get; }
         /// <summary>
-        /// key为prefab，value为texture路径
+        /// 存储着Sprite的引用
         /// </summary>
-        public Dictionary<PrefabInfo, List<string>> referenceDic
-        {
-            private set
-            {
-                mReferenceDic = value;
-            }
-            get
-            {
-                //代码编译后，重新初始化数据
-                if (mReferenceDic == null && !serializaReference.IsNullOrEmpty())
-                {
-                    mReferenceDic = new Dictionary<PrefabInfo, List<string>>(serializaReference.Count);
-                    foreach (var item in serializaReference)
-                    {
-                        if (mReferenceDic.ContainsKey(item.key)) continue;
-                        mReferenceDic.Add(item.key, item.value);
-                    }
-                    prefabInfos = new List<PrefabInfo>(mReferenceDic.Keys);
-                    CalculateOptionName();
-                }
-                return mReferenceDic;
-            }
-        }
+        public List<SpriteInfo> spriteInfos { private set; get; }
 
         public void UpdateReference(List<PrefabInfo> pPrefabInfos)
         {
             if (name.IsNullOrEmpty()) return;
             prefabInfos = pPrefabInfos;
-            CalculateReference();
-        }
-
-        void CalculateReference()
-        {
-            if (prefabInfos.IsNullOrEmpty()) return;
-            referenceDic = new Dictionary<PrefabInfo, List<string>>();
-            serializaReference = new List<SerializaTextureDictionary>();
-            foreach (var tPrefabInfo in prefabInfos)
+            spriteInfos = new List<SpriteInfo>();
+            var tSpriteNames = spriteNames;
+            foreach (var item in tSpriteNames)
             {
-                if (tPrefabInfo == null || !tPrefabInfo.gameObject) continue;
-                var tRoot = tPrefabInfo.transform;
-                var tSprite = tRoot.GetComponent<UISprite>();
-                if (CheckSpriteIsEqual(tRoot, tSprite, this, string.Empty))
-                {
-                    AddPathToDic(tPrefabInfo, string.Empty);
-                }
-
-                var tChildSprites = tRoot.GetComponentsInChildren<UISprite>(true);
-                foreach (var tChildSprite in tChildSprites)
-                {
-                    if (!CheckSpriteIsEqual(tRoot, tChildSprite, this, string.Empty)) continue;
-                    AddPathToDic(tPrefabInfo, tChildSprite.transform.GetHierarchyByRoot(tRoot));
-                }
-            }
-            CalculateOptionName();
-        }
-
-        void AddPathToDic(PrefabInfo pInfo, string pPath)
-        {
-            if (!referenceDic.ContainsKey(pInfo))
-            {
-                referenceDic.Add(pInfo, new List<string>());
-                serializaReference.Add(new SerializaTextureDictionary(pInfo, new List<string>()));
-            }
-            referenceDic[pInfo].Add(pPath);
-            var tVal = serializaReference.Find(x => x.key == pInfo);
-            tVal.value.Add(pPath);
-        }
-
-        void CalculateOptionName()
-        {
-            if (referenceDic.IsNullOrEmpty()) return;
-            foreach (var item in referenceDic.Keys)
-            {
-                var tCount = referenceDic[item].GetCountIgnoreNull();
-                if (tCount == 0) continue;
-                if (item.optionNames == null) item.optionNames = new Dictionary<BaseInfo, string[]>();
-                if (!item.optionNames.ContainsKey(this)) item.optionNames.Add(this, null);
-                item.optionNames[this] = new string[tCount];
-                for (int i = 0; i < tCount; i++)
-                {
-                    item.optionNames[this][i] = "定位Sprite" + i;
-                }
+                spriteInfos.Add(new SpriteInfo(this, item, pPrefabInfos));
             }
         }
 
         public override void Draw(BaseInfo pInfo = null)
         {
-            if (prefabInfos.IsNullOrEmpty() || referenceDic.IsNullOrEmpty()) return;
+            if (spriteInfos.IsNullOrEmpty()) return;
+            EditorGUILayout.BeginVertical();
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(35);
             EditorGUILayout.BeginVertical("box");
-            foreach (var tPrefabInfo in prefabInfos)
+            foreach (var tSpriteInfo in spriteInfos)
             {
-                if (!tPrefabInfo.gameObject) continue;
-                tPrefabInfo.Draw(this);
-                GUILayout.Space(5);
+                tSpriteInfo.Draw();
             }
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.EndHorizontal();
             EditorGUILayout.EndVertical();
         }
 
-        static public bool operator !=(AtlasInfo pInfo, UISprite pSprite)
-        {
-            if (pSprite == null) return true;
-            //存在一些SpriteName不存在该图集的情况，所以只判断下图集是否一致即可
-            return pInfo.atlas != pSprite.atlas;// || pInfo.spriteNames.IsNullOrEmpty() || !pInfo.spriteNames.Contains(pSprite.spriteName);
-        }
-
-        static public bool operator ==(AtlasInfo pInfo, UISprite pSprite)
-        {
-            if (pSprite == null) return false;
-            //存在一些SpriteName不存在该图集的情况，所以只判断下图集是否一致即可
-            return pInfo.atlas == pSprite.atlas;// && !pInfo.spriteNames.IsNullOrEmpty() && pInfo.spriteNames.Contains(pSprite.spriteName);
-        }
-
-        public override int GetHashCode()
-        {
-            return base.GetHashCode();
-        }
-
-        public override bool Equals(object obj)
-        {
-            return base.Equals(obj);
-        }
-
-        static public bool CheckSpriteIsEqual(Transform pRoot, UISprite pSprite, AtlasInfo pInfo, string pPath)
+        static public bool CheckSpriteIsEqual(Transform pRoot, UISprite pSprite, SpriteInfo pInfo, string pPath)
         {
             if (pInfo != pSprite)
             {
@@ -694,15 +597,15 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
             }
         }
 
-        static public Transform GetTrasnformByPath(GameObject pInstance, AtlasInfo pInfo, string pPath, int pIndex = 0)
+        static public Transform GetTrasnformByPath(GameObject pInstance, SpriteInfo pSpriteInfo, string pPath, int pIndex = 0)
         {
             if (pInstance == null) return null;
 
             var tSprites = new List<UISprite>();
             var tSprite = pInstance.GetComponent<UISprite>();
-            if (CheckSpriteIsEqual(pInstance.transform, tSprite, pInfo, string.Empty)) tSprites.Add(tSprite);
+            if (CheckSpriteIsEqual(pInstance.transform, tSprite, pSpriteInfo, string.Empty)) tSprites.Add(tSprite);
 
-            var tChildSprites = pInstance.transform.GetComponentsInChildren<UISprite>(true).Where(x => CheckSpriteIsEqual(pInstance.transform, x, pInfo, string.Empty));
+            var tChildSprites = pInstance.transform.GetComponentsInChildren<UISprite>(true).Where(x => CheckSpriteIsEqual(pInstance.transform, x, pSpriteInfo, string.Empty));
             tSprites.AddRange(tChildSprites);
 
             if (tSprites != null && tSprites.Count > 0)
@@ -832,67 +735,6 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
                         tGo.name = name;
 
                         var tFind = TextureInfo.GetTrasnformByPath(tGo, pInfo, tPath, selectOptionIndex);
-                        if (tFind != null) Selection.activeTransform = tFind;
-                    }
-                }
-            }
-            EditorGUILayout.EndHorizontal();
-        }
-
-        public void Draw(AtlasInfo pInfo)
-        {
-            if (pInfo == null) return;
-            var tPaths = pInfo.referenceDic.ContainsKey(this) ? pInfo.referenceDic[this] : null;
-
-            EditorGUILayout.BeginHorizontal("AS TextArea", GUILayout.MinHeight(20));
-            var tReferenceCount = tPaths.GetCountIgnoreNull();
-            EditorGUILayout.LabelField(name + " Count:" + tReferenceCount);
-            if (gameObject != null && GUILayout.Button("定位Prefab", GUILayout.Width(80)))
-            {
-                Select();
-            }
-            if (tReferenceCount > 0)
-            {
-                GUI.changed = false;
-                if (tReferenceCount > 1 && optionNames != null && optionNames.ContainsKey(pInfo))
-                {
-                    selectOptionIndex = EditorGUILayout.Popup(selectOptionIndex, optionNames[pInfo], GUILayout.Width(90));
-                }
-                if (GUI.changed || (tReferenceCount == 1 && GUILayout.Button("定位Sprite", GUILayout.Width(90))))
-                {
-                    if (selectOptionIndex < 0 || selectOptionIndex >= tReferenceCount) selectOptionIndex = 0;
-                    var tPath = tReferenceCount == 0 ? string.Empty : tPaths[selectOptionIndex];
-
-                    var tGo = GameObject.Find(name);
-                    if (tGo == null)
-                    {
-                        var tRoot = GameObject.Find(cRootPath);
-                        if (tRoot != null)
-                        {
-                            tGo = PrefabUtility.InstantiatePrefab(gameObject) as GameObject;
-                            if (tGo != null)
-                            {
-                                tGo.transform.SetParent(tRoot.transform);
-                                tGo.transform.localPosition = Vector3.zero;
-                                tGo.transform.localRotation = Quaternion.identity;
-                                tGo.transform.localScale = Vector3.one;
-                            }
-                            else
-                            {
-                                Debug.LogErrorFormat("实例化 {0} 错误", gameObject.name);
-                            }
-                        }
-                        else
-                        {
-                            Debug.LogErrorFormat("找不到 {0}", cRootPath);
-                        }
-                    }
-
-                    if (tGo != null)
-                    {
-                        tGo.name = name;
-
-                        var tFind = AtlasInfo.GetTrasnformByPath(tGo, pInfo, tPath, selectOptionIndex);
                         if (tFind != null) Selection.activeTransform = tFind;
                     }
                 }
@@ -1211,6 +1053,209 @@ public class NGUIAtlasOrTextureCheck : EditorWindow
                     });
                     break;
             }
+        }
+    }
+
+    [Serializable]
+    public class SpriteInfo
+    {
+        public SpriteInfo(AtlasInfo pAtlasInfo, string pSpriteName, List<PrefabInfo> pPrefabInfos)
+        {
+            atlasInfo = pAtlasInfo;
+            name = pSpriteName;
+            mPrefabInfos = pPrefabInfos;
+
+            CalculateReference();
+        }
+
+        bool mFoldout;
+        List<PrefabInfo> mPrefabInfos;
+        Dictionary<PrefabInfo, List<string>> mReferenceDic;
+
+        public AtlasInfo atlasInfo { private set; get; }
+        public string name { private set; get; }
+        public Dictionary<PrefabInfo, string[]> optionNames { private set; get; }
+        public int selectOptionIndex { set; get; }
+        List<SerializaTextureDictionary> serializaReference { set; get; }
+        /// <summary>
+        /// key为prefab，value为texture路径
+        /// </summary>
+        public Dictionary<PrefabInfo, List<string>> referenceDic
+        {
+            private set
+            {
+                mReferenceDic = value;
+            }
+            get
+            {
+                //代码编译后，重新初始化数据
+                if (mReferenceDic == null && !serializaReference.IsNullOrEmpty())
+                {
+                    mReferenceDic = new Dictionary<PrefabInfo, List<string>>(serializaReference.Count);
+                    foreach (var item in serializaReference)
+                    {
+                        if (mReferenceDic.ContainsKey(item.key)) continue;
+                        mReferenceDic.Add(item.key, item.value);
+                    }
+                    mPrefabInfos = new List<PrefabInfo>(mReferenceDic.Keys);
+                    CalculateOptionName();
+                }
+                return mReferenceDic;
+            }
+        }
+
+        void CalculateReference()
+        {
+            if (mPrefabInfos.IsNullOrEmpty()) return;
+
+            referenceDic = new Dictionary<PrefabInfo, List<string>>();
+            serializaReference = new List<SerializaTextureDictionary>();
+
+            foreach (var tPrefabInfo in mPrefabInfos)
+            {
+                if (tPrefabInfo == null || !tPrefabInfo.gameObject) continue;
+                var tRoot = tPrefabInfo.transform;
+                var tSprite = tRoot.GetComponent<UISprite>();
+                if (AtlasInfo.CheckSpriteIsEqual(tRoot, tSprite, this, string.Empty))
+                {
+                    AddPathToDic(tSprite, tPrefabInfo, string.Empty);
+                }
+
+                var tChildSprites = tRoot.GetComponentsInChildren<UISprite>(true);
+                foreach (var tChildSprite in tChildSprites)
+                {
+                    if (!AtlasInfo.CheckSpriteIsEqual(tRoot, tChildSprite, this, string.Empty)) continue;
+                    AddPathToDic(tChildSprite, tPrefabInfo, tChildSprite.transform.GetHierarchyByRoot(tRoot));
+                }
+            }
+            CalculateOptionName();
+        }
+
+        void AddPathToDic(UISprite pSprite, PrefabInfo pInfo, string pPath)
+        {
+            if (pSprite == null) return;
+            if (!referenceDic.ContainsKey(pInfo))
+            {
+                referenceDic.Add(pInfo, new List<string>());
+                serializaReference.Add(new SerializaTextureDictionary(pInfo, new List<string>()));
+            }
+            referenceDic[pInfo].Add(pPath);
+            var tVal = serializaReference.Find(x => x.key == pInfo);
+            tVal.value.Add(pPath);
+        }
+
+        void CalculateOptionName()
+        {
+            if (referenceDic.IsNullOrEmpty()) return;
+            foreach (var item in referenceDic.Keys)
+            {
+                var tCount = referenceDic.ContainsKey(item) ? referenceDic[item].GetCountIgnoreNull() : 0;
+                if (tCount == 0) continue;
+                if (optionNames == null) optionNames = new Dictionary<PrefabInfo, string[]>();
+                if (!optionNames.ContainsKey(item)) optionNames.Add(item, null);
+                optionNames[item] = new string[tCount];
+                for (int i = 0; i < tCount; i++)
+                {
+                    optionNames[item][i] = "定位Sprite" + i.ToString();
+                }
+            }
+        }
+
+        public void Draw()
+        {
+            if (atlasInfo == null || referenceDic == null) return;
+            var tTotalCount = 0;
+            foreach (var tPaths in referenceDic.Values)
+            {
+                tTotalCount += tPaths.GetCountIgnoreNull();
+            }
+            mFoldout = EditorGUILayout.Foldout(mFoldout, name + " Count:" + tTotalCount, true);
+            if (!mFoldout) return;
+            EditorGUILayout.BeginVertical("box");
+            foreach (var tPrefabInfo in referenceDic.Keys)
+            {
+                var tPaths = tPrefabInfo != null && referenceDic.ContainsKey(tPrefabInfo) ? referenceDic[tPrefabInfo] : null;
+                if (tPaths.IsNullOrEmpty()) continue;
+
+                //EditorGUILayout.BeginHorizontal("AS TextArea", GUILayout.MinHeight(20));
+                EditorGUILayout.BeginHorizontal("box", GUILayout.MinHeight(20));
+                var tReferenceCount = tPaths.GetCountIgnoreNull();
+                EditorGUILayout.LabelField(tPrefabInfo.name + " Count:" + tReferenceCount);
+                if (tPrefabInfo.gameObject != null && GUILayout.Button("定位Prefab", GUILayout.Width(80)))
+                {
+                    tPrefabInfo.Select();
+                }
+                if (tReferenceCount > 0)
+                {
+                    GUI.changed = false;
+                    if (tReferenceCount > 1 && optionNames != null && optionNames.ContainsKey(tPrefabInfo))
+                    {
+                        selectOptionIndex = EditorGUILayout.Popup(selectOptionIndex, optionNames[tPrefabInfo], GUILayout.Width(90));
+                    }
+                    if (GUI.changed || (tReferenceCount == 1 && GUILayout.Button("定位Sprite", GUILayout.Width(90))))
+                    {
+                        if (selectOptionIndex < 0 || selectOptionIndex >= tReferenceCount) selectOptionIndex = 0;
+                        var tPath = tReferenceCount == 0 ? string.Empty : tPaths[selectOptionIndex];
+
+                        var tGo = GameObject.Find(tPrefabInfo.name);
+                        if (tGo == null)
+                        {
+                            var tRoot = GameObject.Find(cRootPath);
+                            if (tRoot != null)
+                            {
+                                tGo = PrefabUtility.InstantiatePrefab(tPrefabInfo.gameObject) as GameObject;
+                                if (tGo != null)
+                                {
+                                    tGo.transform.SetParent(tRoot.transform);
+                                    tGo.transform.localPosition = Vector3.zero;
+                                    tGo.transform.localRotation = Quaternion.identity;
+                                    tGo.transform.localScale = Vector3.one;
+                                }
+                                else
+                                {
+                                    Debug.LogErrorFormat("实例化 {0} 错误", tPrefabInfo.name);
+                                }
+                            }
+                            else
+                            {
+                                Debug.LogErrorFormat("找不到 {0}", cRootPath);
+                            }
+                        }
+
+                        if (tGo != null)
+                        {
+                            tGo.name = tPrefabInfo.name;
+
+                            var tFind = AtlasInfo.GetTrasnformByPath(tGo, this, tPath, selectOptionIndex);
+                            if (tFind != null) Selection.activeTransform = tFind;
+                        }
+                    }
+                }
+                EditorGUILayout.EndHorizontal();
+            }
+            EditorGUILayout.EndVertical();
+        }
+
+        static public bool operator !=(SpriteInfo pInfo, UISprite pSprite)
+        {
+            if (pSprite == null) return true;
+            return pInfo.atlasInfo == null || pInfo.atlasInfo.atlas != pSprite.atlas || pInfo.name != pSprite.spriteName;
+        }
+
+        static public bool operator ==(SpriteInfo pInfo, UISprite pSprite)
+        {
+            if (pSprite == null) return false;
+            return pInfo.atlasInfo != null && pInfo.atlasInfo.atlas == pSprite.atlas && pInfo.name == pSprite.spriteName;
+        }
+
+        public override int GetHashCode()
+        {
+            return (atlasInfo == null ? 0 : atlasInfo.name.GetHashCode()) ^ name.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj == this;
         }
     }
 
